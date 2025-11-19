@@ -1,0 +1,71 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  role      String   @default("VIEWER") // TRAINER, ADMIN, VIEWER
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  validatedTrainings TrainingRecord[]
+  auditLogs AuditLog[]
+}
+
+model Employee {
+  id            String           @id @default(cuid())
+  employeeNumber String           @unique
+  name          String
+  department    String? // e.g., "Assembly", "Logistics"
+  dateHired     DateTime
+  photoUrl      String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  trainings     TrainingRecord[]
+}
+
+model Skill {
+  id          String           @id @default(cuid())
+  code        String           @unique
+  name        String
+  description String?
+  documentUrl String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  trainings   TrainingRecord[]
+}
+
+model TrainingRecord {
+  id            String   @id @default(cuid())
+  employeeId    String
+  skillId       String
+  validatorId   String // User ID of the trainer
+  level         Int      @default(1) // 1-4 TPS Scale
+  dateValidated DateTime @default(now())
+  
+  employee      Employee @relation(fields: [employeeId], references: [id])
+  skill         Skill    @relation(fields: [skillId], references: [id])
+  validator     User     @relation(fields: [validatorId], references: [id])
+  
+  @@unique([employeeId, skillId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String   // e.g., "CREATE_USER", "VALIDATE_SKILL"
+  entityId   String?  // ID of the affected object
+  entityType String   // e.g., "User", "Skill", "TrainingRecord"
+  userId     String   // Who performed the action
+  user       User     @relation(fields: [userId], references: [id])
+  details    String?  // JSON string or text description
+  createdAt  DateTime @default(now())
+}

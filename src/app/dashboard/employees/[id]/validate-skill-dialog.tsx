@@ -1,0 +1,105 @@
+'use client';
+
+import { validateTraining } from '@/app/lib/actions';
+import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { useActionState } from 'react';
+import { useState } from 'react';
+
+export default function ValidateSkillDialog({
+    employeeId,
+    skills,
+}: {
+    employeeId: string;
+    skills: any[];
+}) {
+    const [open, setOpen] = useState(false);
+    const [selectedSkillId, setSelectedSkillId] = useState<string>('');
+    const initialState = { message: null, errors: {} };
+    // @ts-ignore
+    const [state, dispatch] = useActionState(validateTraining, initialState);
+
+    const selectedSkill = skills.find(s => s.id === selectedSkillId);
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button>Validate New Skill</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>Validate Skill</DialogTitle>
+                    <DialogDescription>
+                        Select a skill to validate for this employee.
+                    </DialogDescription>
+                </DialogHeader>
+                <form action={dispatch} onSubmit={() => setOpen(false)}>
+                    <input type="hidden" name="employeeId" value={employeeId} />
+                    <div className="grid gap-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="skillId">Select Skill</Label>
+                            <Select name="skillId" required onValueChange={setSelectedSkillId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a skill" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {skills.map((skill) => (
+                                        <SelectItem key={skill.id} value={skill.id}>
+                                            {skill.code} - {skill.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            {selectedSkill?.documentUrl && (
+                                <div className="mt-2">
+                                    <a
+                                        href={selectedSkill.documentUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                                    >
+                                        View SOP/Document
+                                    </a>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="level">Skill Level (TPS)</Label>
+                            <Select name="level" required defaultValue="1">
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select level..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="1">Level 1 - Trainee</SelectItem>
+                                    <SelectItem value="2">Level 2 - Practitioner</SelectItem>
+                                    <SelectItem value="3">Level 3 - Expert</SelectItem>
+                                    <SelectItem value="4">Level 4 - Trainer</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button type="submit">Validate</Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+}
