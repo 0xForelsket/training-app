@@ -14,6 +14,13 @@ export default async function SkillMatrixPage() {
     // I should add a function to fetch matrix data.
     const matrixData = await getSkillMatrixData();
     const skills = await getSkills();
+    const noEmployees = matrixData.length === 0;
+    const noSkills = skills.length === 0;
+    const emptyStateMessage = noEmployees && noSkills
+        ? 'Add employees and skills to generate the matrix overview.'
+        : noEmployees
+            ? 'No employees found. Once employees are added, their coverage will appear here.'
+            : 'No skills available. Add skills to see coverage per employee.';
 
     return (
         <div className="p-8 overflow-x-auto">
@@ -37,33 +44,41 @@ export default async function SkillMatrixPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {matrixData.map((employee) => (
-                                <TableRow key={employee.id}>
-                                    <TableCell className="font-medium sticky left-0 bg-background z-10">
-                                        {employee.name}
-                                        <div className="text-xs text-muted-foreground">{employee.employeeNumber}</div>
+                            {noEmployees || noSkills ? (
+                                <TableRow>
+                                    <TableCell colSpan={Math.max(skills.length + 1, 1)} className="text-center text-muted-foreground">
+                                        {emptyStateMessage}
                                     </TableCell>
-                                    {skills.map((skill) => {
-                                        const training = employee.trainings.find((t) => t.skillId === skill.id);
-                                        return (
-                                            <TableCell key={skill.id} className="text-center">
-                                                {training ? (
-                                                    <div className={`mx-auto flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold text-white
+                                </TableRow>
+                            ) : (
+                                matrixData.map((employee) => (
+                                    <TableRow key={employee.id}>
+                                        <TableCell className="font-medium sticky left-0 bg-background z-10">
+                                            {employee.name}
+                                            <div className="text-xs text-muted-foreground">{employee.employeeNumber}</div>
+                                        </TableCell>
+                                        {skills.map((skill) => {
+                                            const training = employee.trainings.find((t) => t.skillId === skill.id);
+                                            return (
+                                                <TableCell key={skill.id} className="text-center">
+                                                    {training ? (
+                                                        <div className={`mx-auto flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold text-white
                                                         ${training.level === 1 ? 'bg-red-500' : ''}
                                                         ${training.level === 2 ? 'bg-yellow-500' : ''}
                                                         ${training.level === 3 ? 'bg-blue-500' : ''}
                                                         ${training.level === 4 ? 'bg-green-500' : ''}
                                                     `}>
-                                                        {training.level}
-                                                    </div>
-                                                ) : (
-                                                    <div className="mx-auto h-2 w-2 rounded-full bg-gray-200" />
-                                                )}
-                                            </TableCell>
-                                        );
-                                    })}
-                                </TableRow>
-                            ))}
+                                                            {training.level}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="mx-auto h-2 w-2 rounded-full bg-gray-200" />
+                                                    )}
+                                                </TableCell>
+                                            );
+                                        })}
+                                    </TableRow>
+                                ))
+                            )}
                         </TableBody>
                     </Table>
                 </CardContent>

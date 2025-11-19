@@ -42,7 +42,7 @@ export function UploadSkillsForm() {
         <Card>
             <CardHeader>
                 <CardTitle>Upload Skills</CardTitle>
-                <CardDescription>CSV Headers: code, name, description</CardDescription>
+                <CardDescription>CSV Headers: code, name, description, project</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="grid w-full max-w-sm items-center gap-1.5">

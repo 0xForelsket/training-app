@@ -19,6 +19,8 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { useActionState } from 'react';
 import { useState } from 'react';
 
@@ -49,7 +51,7 @@ export default function ValidateSkillDialog({
                         Select a skill to validate for this employee.
                     </DialogDescription>
                 </DialogHeader>
-                <form action={dispatch} onSubmit={() => setOpen(false)}>
+                <form action={dispatch} onSubmit={() => setOpen(false)} encType="multipart/form-data">
                     <input type="hidden" name="employeeId" value={employeeId} />
                     <div className="grid gap-4 py-4">
                         <div className="space-y-2">
@@ -93,6 +95,23 @@ export default function ValidateSkillDialog({
                                     <SelectItem value="4">Level 4 - Trainer</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="notes">Validator Notes</Label>
+                            <Textarea
+                                id="notes"
+                                name="notes"
+                                placeholder="Document observations, readiness, or evidence references..."
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="evidence">Evidence Attachment</Label>
+                            <Input id="evidence" name="evidence" type="file" accept="image/*,application/pdf" />
+                            <p className="text-xs text-muted-foreground">
+                                Optional: upload supporting photos or signed checklists.
+                            </p>
                         </div>
                     </div>
                     <DialogFooter>

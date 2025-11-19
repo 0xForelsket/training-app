@@ -34,6 +34,7 @@ export default async function SkillsPage() {
                             <TableRow>
                                 <TableHead>Code</TableHead>
                                 <TableHead>Name</TableHead>
+                                <TableHead>Project</TableHead>
                                 <TableHead>Description</TableHead>
                                 <TableHead>SOP</TableHead>
                                 <TableHead className="w-[100px]">Actions</TableHead>
@@ -44,6 +45,7 @@ export default async function SkillsPage() {
                                 <TableRow key={skill.id}>
                                     <TableCell className="font-medium">{skill.code}</TableCell>
                                     <TableCell>{skill.name}</TableCell>
+                                    <TableCell>{skill.project || '-'}</TableCell>
                                     <TableCell>{skill.description}</TableCell>
                                     <TableCell>
                                         {skill.documentUrl ? (

@@ -34,21 +34,29 @@ export default async function UsersPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {users.map((user) => (
-                                <TableRow key={user.id}>
-                                    <TableCell className="font-medium">{user.username}</TableCell>
-                                    <TableCell>
-                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
+                            {users.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={3} className="text-center text-muted-foreground">
+                                        No users found. Create your first trainer or admin to get started.
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                users.map((user) => (
+                                    <TableRow key={user.id}>
+                                        <TableCell className="font-medium">{user.username}</TableCell>
+                                        <TableCell>
+                                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
                                             ${user.role === 'ADMIN' ? 'bg-purple-100 text-purple-800' : ''}
                                             ${user.role === 'TRAINER' ? 'bg-blue-100 text-blue-800' : ''}
                                             ${user.role === 'VIEWER' ? 'bg-gray-100 text-gray-800' : ''}
                                         `}>
-                                            {user.role}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell>{user.createdAt.toLocaleDateString()}</TableCell>
-                                </TableRow>
-                            ))}
+                                                {user.role}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell>{user.createdAt.toLocaleDateString()}</TableCell>
+                                    </TableRow>
+                                ))
+                            )}
                         </TableBody>
                     </Table>
                 </CardContent>

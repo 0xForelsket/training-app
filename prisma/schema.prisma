@@ -10,6 +10,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Shift {
+  DAY
+  NIGHT
+}
+
 model User {
   id        String   @id @default(cuid())
   username  String   @unique
@@ -26,6 +31,7 @@ model Employee {
   employeeNumber String           @unique
   name          String
   department    String? // e.g., "Assembly", "Logistics"
+  shift         Shift            @default(DAY)
   dateHired     DateTime
   photoUrl      String?
   createdAt     DateTime         @default(now())
@@ -37,6 +43,7 @@ model Skill {
   id          String           @id @default(cuid())
   code        String           @unique
   name        String
+  project     String?
   description String?
   documentUrl String?
   createdAt   DateTime         @default(now())
@@ -51,6 +58,8 @@ model TrainingRecord {
   validatorId   String // User ID of the trainer
   level         Int      @default(1) // 1-4 TPS Scale
   dateValidated DateTime @default(now())
+  validatorNotes String?
+  evidenceUrl    String?
   
   employee      Employee @relation(fields: [employeeId], references: [id])
   skill         Skill    @relation(fields: [skillId], references: [id])

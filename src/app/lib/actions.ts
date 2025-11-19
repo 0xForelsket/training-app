@@ -32,6 +32,7 @@ const CreateEmployeeSchema = z.object({
     name: z.string().min(1, 'Name is required'),
     employeeNumber: z.string().min(1, 'Employee Number is required'),
     department: z.string().optional(),
+    shift: z.enum(['DAY', 'NIGHT']).default('DAY'),
     dateHired: z.string().refine((date) => !isNaN(Date.parse(date)), {
         message: 'Invalid date format',
     }),
@@ -43,6 +44,7 @@ export async function createEmployee(prevState: any, formData: FormData) {
         name: formData.get('name'),
         employeeNumber: formData.get('employeeNumber'),
         department: formData.get('department'),
+        shift: formData.get('shift') || 'DAY',
         dateHired: formData.get('dateHired'),
         photo: formData.get('photo'),
     });
@@ -54,7 +56,7 @@ export async function createEmployee(prevState: any, formData: FormData) {
         };
     }
 
-    const { name, employeeNumber, department, dateHired, photo } = validatedFields.data;
+    const { name, employeeNumber, department, shift, dateHired, photo } = validatedFields.data;
     let photoUrl = null;
 
     if (photo && photo.size > 0) {
@@ -78,6 +80,7 @@ export async function createEmployee(prevState: any, formData: FormData) {
                 name,
                 employeeNumber,
                 department,
+                shift,
                 dateHired: new Date(dateHired),
                 photoUrl,
             },
@@ -98,6 +101,7 @@ import path from 'path';
 const CreateSkillSchema = z.object({
     code: z.string().min(1, 'Code is required'),
     name: z.string().min(1, 'Name is required'),
+    project: z.string().optional(),
     description: z.string().optional(),
     document: z.any().optional(), // We'll validate the file manually
 });
@@ -106,6 +110,7 @@ export async function createSkill(prevState: any, formData: FormData) {
     const validatedFields = CreateSkillSchema.safeParse({
         code: formData.get('code'),
         name: formData.get('name'),
+        project: formData.get('project'),
         description: formData.get('description'),
         document: formData.get('document'),
     });
@@ -117,8 +122,9 @@ export async function createSkill(prevState: any, formData: FormData) {
         };
     }
 
-    const { code, name, description, document } = validatedFields.data;
+    const { code, name, project, description, document } = validatedFields.data;
     let documentUrl = null;
+    const trimmedProject = project?.toString().trim();
 
     if (document && document.size > 0) {
         const file = document as File;
@@ -140,6 +146,7 @@ export async function createSkill(prevState: any, formData: FormData) {
             data: {
                 code,
                 name,
+                project: trimmedProject && trimmedProject.length > 0 ? trimmedProject : null,
                 description,
                 documentUrl,
             },
@@ -159,6 +166,11 @@ const ValidateTrainingSchema = z.object({
     employeeId: z.string(),
     skillId: z.string(),
     level: z.coerce.number().min(1).max(4),
+    notes: z
+        .string()
+        .max(1000)
+        .optional()
+        .transform((value) => (value && value.trim().length > 0 ? value.trim() : null)),
 });
 
 export async function validateTraining(prevState: any, formData: FormData) {
@@ -171,6 +183,7 @@ export async function validateTraining(prevState: any, formData: FormData) {
         employeeId: formData.get('employeeId'),
         skillId: formData.get('skillId'),
         level: formData.get('level'),
+        notes: formData.get('notes'),
     });
 
     if (!validatedFields.success) {
@@ -179,24 +192,80 @@ export async function validateTraining(prevState: any, formData: FormData) {
         };
     }
 
-    const { employeeId, skillId, level } = validatedFields.data;
+    const { employeeId, skillId, level, notes } = validatedFields.data;
+    const validatorNotes = notes ?? null;
+
+    let evidenceUrl: string | null = null;
+    const evidence = formData.get('evidence');
+
+    if (evidence instanceof File && evidence.size > 0) {
+        const buffer = Buffer.from(await evidence.arrayBuffer());
+        const filename = `evidence_${Date.now()}_${evidence.name.replace(/\s/g, '_')}`;
+        const uploadDir = path.join(process.cwd(), 'public/uploads');
+
+        try {
+            await writeFile(path.join(uploadDir, filename), buffer);
+            evidenceUrl = `/uploads/${filename}`;
+        } catch (error) {
+            console.error('Error saving evidence file:', error);
+            return {
+                message: 'Failed to save evidence attachment.',
+            };
+        }
+    }
 
     try {
-        const record = await prisma.trainingRecord.create({
-            data: {
-                employeeId,
-                skillId,
-                validatorId: session.user.id,
-                level: 1, // Default to Level 1
+        const existingRecord = await prisma.trainingRecord.findUnique({
+            where: {
+                employeeId_skillId: {
+                    employeeId,
+                    skillId,
+                },
             },
         });
-        await logAction('VALIDATE_SKILL', 'TrainingRecord', record.id, `Validated skill ${skillId} for employee ${employeeId}`);
+
+        if (existingRecord) {
+            const updated = await prisma.trainingRecord.update({
+                where: { id: existingRecord.id },
+                data: {
+                    level,
+                    validatorId: session.user.id,
+                    dateValidated: new Date(),
+                    validatorNotes,
+                    ...(evidenceUrl ? { evidenceUrl } : {}),
+                },
+            });
+            await logAction(
+                'UPDATE_TRAINING_VALIDATION',
+                'TrainingRecord',
+                updated.id,
+                `Updated skill ${skillId} for employee ${employeeId} to level ${level}`,
+            );
+        } else {
+            const created = await prisma.trainingRecord.create({
+                data: {
+                    employeeId,
+                    skillId,
+                    validatorId: session.user.id,
+                    level,
+                    validatorNotes,
+                    evidenceUrl,
+                },
+            });
+            await logAction(
+                'VALIDATE_SKILL',
+                'TrainingRecord',
+                created.id,
+                `Validated skill ${skillId} for employee ${employeeId} at level ${level}`,
+            );
+        }
+
         revalidatePath(`/dashboard/employees/${employeeId}`);
         revalidatePath('/dashboard/matrix');
-        return { message: 'Training validated successfully.' };
+        return { message: 'Training saved successfully.' };
     } catch (error) {
         return {
-            message: 'Database Error: Failed to Validate Training. Record might already exist.',
+            message: 'Database Error: Failed to Validate Training.',
         };
     }
 }
@@ -280,11 +349,15 @@ export async function bulkCreateEmployees(employees: any[]) {
 
     for (const emp of employees) {
         try {
+            const rawShift = typeof emp.shift === 'string' ? emp.shift.toUpperCase() : '';
+            const shift = rawShift === 'NIGHT' ? 'NIGHT' : 'DAY';
+
             await prisma.employee.create({
                 data: {
                     name: emp.name,
                     employeeNumber: emp.employeeNumber,
                     department: emp.department,
+                    shift,
                     dateHired: new Date(emp.dateHired),
                 },
             });
@@ -310,11 +383,14 @@ export async function bulkCreateSkills(skills: any[]) {
 
     for (const skill of skills) {
         try {
+            const trimmedProject = typeof skill.project === 'string' ? skill.project.trim() : '';
+
             await prisma.skill.create({
                 data: {
                     code: skill.code,
                     name: skill.name,
                     description: skill.description,
+                    project: trimmedProject ? trimmedProject : null,
                 },
             });
             count++;

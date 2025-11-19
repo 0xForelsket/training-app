@@ -42,7 +42,9 @@ export function UploadEmployeesForm() {
         <Card>
             <CardHeader>
                 <CardTitle>Upload Employees</CardTitle>
-                <CardDescription>CSV Headers: name, employeeNumber, department, dateHired</CardDescription>
+                <CardDescription>
+                    CSV Headers: name, employeeNumber, department, dateHired, shift (DAY or NIGHT)
+                </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="grid w-full max-w-sm items-center gap-1.5">

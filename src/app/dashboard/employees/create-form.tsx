@@ -4,6 +4,7 @@ import { createEmployee } from '@/app/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Link from 'next/link';
 import { useActionState } from 'react';
 
@@ -27,6 +28,19 @@ export default function CreateForm() {
             <div className="space-y-2">
                 <Label htmlFor="department">Department</Label>
                 <Input id="department" name="department" placeholder="Assembly" />
+            </div>
+
+            <div className="space-y-2">
+                <Label htmlFor="shift">Shift</Label>
+                <Select name="shift" defaultValue="DAY" required>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select shift" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="DAY">Day Shift</SelectItem>
+                        <SelectItem value="NIGHT">Night Shift</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
 
             <div className="space-y-2">

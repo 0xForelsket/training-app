@@ -76,6 +76,8 @@ export default async function EmployeeProfilePage({ params }: { params: Promise<
                                 <TableHead>Skill Code</TableHead>
                                 <TableHead>Skill Name</TableHead>
                                 <TableHead>Level</TableHead>
+                                <TableHead>Notes</TableHead>
+                                <TableHead>Evidence</TableHead>
                                 <TableHead>Date Validated</TableHead>
                                 <TableHead>Validator</TableHead>
                             </TableRow>
@@ -83,7 +85,7 @@ export default async function EmployeeProfilePage({ params }: { params: Promise<
                         <TableBody>
                             {employee.trainings.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="text-center text-gray-500">
+                                    <TableCell colSpan={7} className="text-center text-gray-500">
                                         No training records found.
                                     </TableCell>
                                 </TableRow>
@@ -109,6 +111,27 @@ export default async function EmployeeProfilePage({ params }: { params: Promise<
                                             <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">
                                                 {record.level}
                                             </span>
+                                        </TableCell>
+                                        <TableCell className="max-w-xs text-sm text-muted-foreground">
+                                            {record.validatorNotes ? (
+                                                record.validatorNotes
+                                            ) : (
+                                                <span className="text-gray-400">-</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            {record.evidenceUrl ? (
+                                                <a
+                                                    href={record.evidenceUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-blue-600 hover:underline"
+                                                >
+                                                    View
+                                                </a>
+                                            ) : (
+                                                <span className="text-gray-400">-</span>
+                                            )}
                                         </TableCell>
                                         <TableCell>{record.dateValidated.toLocaleDateString()}</TableCell>
                                         <TableCell>{record.validator.username}</TableCell>

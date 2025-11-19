@@ -26,6 +26,11 @@ export default function CreateSkillForm() {
             </div>
 
             <div className="space-y-2">
+                <Label htmlFor="project">Project</Label>
+                <Input id="project" name="project" placeholder="e.g., Launch Prep" />
+            </div>
+
+            <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea id="description" name="description" placeholder="Enter skill description" />
             </div>
