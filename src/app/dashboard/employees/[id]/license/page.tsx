@@ -14,12 +14,12 @@ export default async function LicensePage({ params }: { params: Promise<{ id: st
         notFound();
     }
 
-    const qrValue = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/employees/${employee.id}`;
+    const qrValue = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/employees/${employee.employeeNumber}`;
 
     return (
         <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4 print:bg-white print:p-0">
             <div className="mb-8 print:hidden flex gap-4">
-                <Link href={`/dashboard/employees/${employee.id}`}>
+                <Link href={`/dashboard/employees/${employee.employeeNumber}`}>
                     <Button variant="outline">Back to Profile</Button>
                 </Link>
                 <PrintButton />

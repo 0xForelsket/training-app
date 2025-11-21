@@ -34,19 +34,25 @@ export default async function SkillsPage() {
                             <TableRow>
                                 <TableHead>Code</TableHead>
                                 <TableHead>Name</TableHead>
+                                <TableHead>Revision</TableHead>
                                 <TableHead>Project</TableHead>
                                 <TableHead>Description</TableHead>
+                                <TableHead>Validity (mo)</TableHead>
+                                <TableHead>Reminder (days)</TableHead>
                                 <TableHead>SOP</TableHead>
                                 <TableHead className="w-[100px]">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {skills.map((skill) => (
-                                <TableRow key={skill.id}>
+                                <TableRow key={skill.code}>
                                     <TableCell className="font-medium">{skill.code}</TableCell>
                                     <TableCell>{skill.name}</TableCell>
+                                    <TableCell>Rev {skill.currentRevisionNumber || 1}</TableCell>
                                     <TableCell>{skill.project || '-'}</TableCell>
                                     <TableCell>{skill.description}</TableCell>
+                                    <TableCell>{skill.validityMonths ?? '—'}</TableCell>
+                                    <TableCell>{skill.recertReminderDays ?? '—'}</TableCell>
                                     <TableCell>
                                         {skill.documentUrl ? (
                                             <a
@@ -62,7 +68,14 @@ export default async function SkillsPage() {
                                         )}
                                     </TableCell>
                                     <TableCell>
-                                        <DeleteSkillButton id={skill.id} />
+                                        <div className="flex flex-col gap-2">
+                                            <Button variant="outline" size="sm" asChild>
+                                                <Link href={`/dashboard/admin/skills/${skill.code}/revision`}>
+                                                    New Revision
+                                                </Link>
+                                            </Button>
+                                            <DeleteSkillButton code={skill.code} />
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))}

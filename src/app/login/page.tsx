@@ -7,17 +7,29 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import Image from 'next/image';
 
 export default function LoginPage() {
     const [errorMessage, dispatch] = useActionState(authenticate, undefined);
 
     return (
-        <div className="flex h-screen items-center justify-center bg-gray-100">
-            <Card className="w-full max-w-sm">
+        <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-[#002540] via-[#0b2f4c] to-[#e07c00] px-4">
+            <div
+                className="pointer-events-none absolute inset-0 opacity-70 mix-blend-screen"
+                style={{
+                    background:
+                        'radial-gradient(circle at 15% 25%, rgba(255,255,255,0.08), transparent 35%), radial-gradient(circle at 80% 10%, rgba(255,255,255,0.12), transparent 30%)',
+                }}
+            />
+            <Card className="relative w-full max-w-md border border-border/60 shadow-[0_24px_70px_-40px_rgba(0,82,140,0.7)]">
                 <CardHeader>
-                    <CardTitle className="text-2xl">Login</CardTitle>
-                    <CardDescription>
-                        Enter your credentials to access the training app.
+                    <div className="flex justify-center">
+                        <Image src="/logo.png" alt="Training App" width={72} height={72} className="h-14 w-14 object-contain" />
+                    </div>
+                    <p className="text-xs uppercase tracking-[0.16em] text-primary">Payer-inspired</p>
+                    <CardTitle className="text-2xl">Training App</CardTitle>
+                    <CardDescription className="text-sm">
+                        Sign in to manage workforce validation and keep your teams audit-ready.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -37,7 +49,7 @@ export default function LoginPage() {
                             aria-atomic="true"
                         >
                             {errorMessage && (
-                                <p className="text-sm text-red-500">{errorMessage}</p>
+                                <p className="text-sm text-destructive">{errorMessage}</p>
                             )}
                         </div>
                     </form>

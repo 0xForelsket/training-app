@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 
 export function AddEmployeeNoteForm({ employeeId }: { employeeId: string }) {
     const initialState = { message: null, errors: {} };
-    // @ts-ignore
+    // @ts-expect-error Server action typing
     const [state, dispatch] = useActionState(createEmployeeNote, initialState);
     const formRef = useRef<HTMLFormElement>(null);
 

@@ -40,7 +40,7 @@ export function CreateUserDialog() {
                 <DialogHeader>
                     <DialogTitle>Add New User</DialogTitle>
                     <DialogDescription>
-                        Create a new account for a Trainer or Admin.
+                        Create a new account for Admin, Trainer, HR, or DCC.
                     </DialogDescription>
                 </DialogHeader>
                 <form action={dispatch} onSubmit={() => setOpen(false)}>
@@ -68,6 +68,8 @@ export function CreateUserDialog() {
                                 <SelectContent>
                                     <SelectItem value="TRAINER">Trainer</SelectItem>
                                     <SelectItem value="ADMIN">Admin</SelectItem>
+                                    <SelectItem value="HR">HR</SelectItem>
+                                    <SelectItem value="DCC">DCC</SelectItem>
                                     <SelectItem value="VIEWER">Viewer</SelectItem>
                                 </SelectContent>
                             </Select>

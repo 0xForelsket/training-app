@@ -13,7 +13,7 @@ export function CopyProfileLinkButton({ employeeId }: { employeeId: string }) {
             await navigator.clipboard.writeText(url);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
-        } catch (error) {
+        } catch {
             setCopied(false);
         }
     };

@@ -42,6 +42,20 @@ const SkillCsvSchema = z.object({
     name: z.string().min(1, 'Name is required'),
     description: z.string().optional(),
     project: z.string().optional(),
+    validityMonths: z
+        .string()
+        .optional()
+        .transform((val) => (val && val.trim().length > 0 ? Number(val) : undefined))
+        .refine((val) => val === undefined || (!Number.isNaN(val) && val > 0), {
+            message: 'validityMonths must be a positive number',
+        }),
+    recertReminderDays: z
+        .string()
+        .optional()
+        .transform((val) => (val && val.trim().length > 0 ? Number(val) : undefined))
+        .refine((val) => val === undefined || (!Number.isNaN(val) && val > 0), {
+            message: 'recertReminderDays must be a positive number',
+        }),
 });
 
 const isEmptyRow = (row: Record<string, unknown>) =>
@@ -128,7 +142,9 @@ export function UploadSkillsForm() {
                 <div className="flex flex-col gap-2">
                     <div>
                         <CardTitle>Upload Skills</CardTitle>
-                        <CardDescription>CSV Headers: code, name, description, project</CardDescription>
+                        <CardDescription>
+                            CSV Headers: code, name, description, project, validityMonths, recertReminderDays
+                        </CardDescription>
                     </div>
                     <a
                         href="/templates/skill-upload-template.csv"
@@ -170,6 +186,8 @@ export function UploadSkillsForm() {
                                         <TableHead>Name</TableHead>
                                         <TableHead>Description</TableHead>
                                         <TableHead>Project</TableHead>
+                                        <TableHead>Validity (mo)</TableHead>
+                                        <TableHead>Reminder (days)</TableHead>
                                         <TableHead>Status</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -181,6 +199,8 @@ export function UploadSkillsForm() {
                                             <TableCell>{row.data.name || '-'}</TableCell>
                                             <TableCell>{row.data.description || '-'}</TableCell>
                                             <TableCell>{row.data.project || '-'}</TableCell>
+                                            <TableCell>{row.data.validityMonths ?? '-'}</TableCell>
+                                            <TableCell>{row.data.recertReminderDays ?? '-'}</TableCell>
                                             <TableCell>
                                                 {row.valid ? (
                                                     <Badge variant="secondary">Ready</Badge>

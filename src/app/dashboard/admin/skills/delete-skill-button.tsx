@@ -4,10 +4,10 @@ import { deleteSkill } from '@/app/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
 
-export function DeleteSkillButton({ id }: { id: string }) {
+export function DeleteSkillButton({ code }: { code: string }) {
     const handleDelete = async () => {
         if (confirm('Are you sure you want to delete this skill? This action cannot be undone.')) {
-            await deleteSkill(id);
+            await deleteSkill(code);
         }
     };
 

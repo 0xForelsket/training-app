@@ -10,7 +10,7 @@ import { useActionState } from 'react';
 
 export default function CreateForm() {
     const initialState = { message: null, errors: {} };
-    // @ts-ignore
+    // @ts-expect-error Server action typing
     const [state, dispatch] = useActionState(createEmployee, initialState);
 
     return (
@@ -59,6 +59,9 @@ export default function CreateForm() {
                 </Link>
                 <Button type="submit">Save Employee</Button>
             </div>
+            {state?.message && (
+                <p className="text-sm text-muted-foreground text-right">{state.message}</p>
+            )}
         </form>
     );
 }

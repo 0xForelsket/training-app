@@ -119,16 +119,16 @@ export default async function EmployeesPage({
                                 </TableRow>
                             ) : (
                                 employees.map((employee) => (
-                                    <TableRow key={employee.id}>
+                                    <TableRow key={employee.employeeNumber}>
                                         <TableCell>{employee.employeeNumber}</TableCell>
                                         <TableCell>{employee.name}</TableCell>
                                         <TableCell>{employee.department || '-'}</TableCell>
                                         <TableCell>
                                             {employee.shift === 'NIGHT' ? 'Night Shift' : 'Day Shift'}
                                         </TableCell>
-                                        <TableCell>{employee.dateHired.toLocaleDateString()}</TableCell>
+                                        <TableCell>{new Date(employee.dateHired).toLocaleDateString()}</TableCell>
                                         <TableCell>
-                                            <Link href={`/dashboard/employees/${employee.id}`}>
+                                            <Link href={`/dashboard/employees/${employee.employeeNumber}`}>
                                                 <Button variant="ghost" size="sm">
                                                     View
                                                 </Button>

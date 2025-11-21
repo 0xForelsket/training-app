@@ -1,10 +1,11 @@
-import { getEmployeeById, getSkills } from '@/app/lib/data';
+import { evaluateRecertification, getEmployeeById, getSkills } from '@/app/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import Image from 'next/image';
 import ValidateSkillDialog from './validate-skill-dialog';
 import AssignTrainingDialog from './assign-training-dialog';
 import { RemindAssignmentButton } from './remind-assignment-button';
@@ -25,16 +26,34 @@ export default async function EmployeeProfilePage({ params }: { params: Promise<
     const trainings = employee.trainings || [];
     const notes = employee.notes || [];
     const now = new Date().getTime();
-    const openAssignments = assignments.filter((assignment: any) => assignment.status !== 'COMPLETED');
-    const overdueAssignments = openAssignments.filter((assignment: any) =>
-        (assignment.dueDate as Date).getTime() < now,
+    const openAssignments = assignments.filter((assignment) => assignment.status !== 'COMPLETED');
+    const overdueAssignments = openAssignments.filter((assignment) =>
+        assignment.dueDate.getTime() < now,
     );
     const recentTrainings = trainings.slice(0, 5);
     const shiftLabel = employee.shift === 'NIGHT' ? 'Night Shift' : 'Day Shift';
-    const csvExportUrl = `/api/employees/${employee.id}/training`;
+    const csvExportUrl = `/api/employees/${employee.employeeNumber}/training`;
+
+    const recertifications = trainings
+        .map((record) =>
+            evaluateRecertification({
+                ...record,
+                employee: {
+                    id: employee.employeeNumber,
+                    name: employee.name,
+                    employeeNumber: employee.employeeNumber,
+                },
+            }),
+        )
+        .filter((item): item is NonNullable<ReturnType<typeof evaluateRecertification>> => !!item);
+
+    const actionableRecerts = recertifications
+        .filter((item) => item.status !== 'CURRENT')
+        .sort((a, b) => a.expirationDate.getTime() - b.expirationDate.getTime());
+    const expiringSoonCount = actionableRecerts.length;
 
     const editEmployeePayload = {
-        id: employee.id,
+        id: employee.employeeNumber,
         name: employee.name,
         employeeNumber: employee.employeeNumber,
         department: employee.department,
@@ -42,7 +61,7 @@ export default async function EmployeeProfilePage({ params }: { params: Promise<
         dateHired: employee.dateHired.toISOString().split('T')[0],
     };
 
-    const getAssignmentStatus = (assignment: any) => {
+    const getAssignmentStatus = (assignment: (typeof assignments)[number]) => {
         const dueDate = assignment.dueDate as Date;
         const isOverdue =
             assignment.status !== 'COMPLETED' && dueDate.getTime() < new Date().getTime();
@@ -74,7 +93,7 @@ export default async function EmployeeProfilePage({ params }: { params: Promise<
                 <div className="flex flex-wrap gap-2">
                     <EditEmployeeDialog employee={editEmployeePayload} />
                     <ValidateSkillDialog
-                        employeeId={employee.id}
+                        employeeId={employee.employeeNumber}
                         skills={skills}
                         trainings={employee.trainings}
                     />
@@ -90,10 +109,11 @@ export default async function EmployeeProfilePage({ params }: { params: Promise<
                         <div className="flex flex-col items-center gap-2">
                             <div className="h-28 w-28 overflow-hidden rounded-full bg-muted shadow-inner">
                                 {employee.photoUrl ? (
-                                    <img
+                                    <Image
                                         src={employee.photoUrl}
                                         alt={employee.name}
-                                        className="h-full w-full object-cover"
+                                        fill
+                                        className="object-cover"
                                     />
                                 ) : (
                                     <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-muted-foreground">
@@ -117,13 +137,13 @@ export default async function EmployeeProfilePage({ params }: { params: Promise<
                                 </p>
                             </div>
                             <div className="flex flex-wrap gap-2">
-                                <Link href={`/dashboard/employees/${employee.id}/license`}>
+                                <Link href={`/dashboard/employees/${employee.employeeNumber}/license`}>
                                     <Button variant="outline">Print License</Button>
                                 </Link>
                                 <Button asChild variant="outline">
                                     <a href={csvExportUrl}>Download CSV</a>
                                 </Button>
-                                <CopyProfileLinkButton employeeId={employee.id} />
+                                <CopyProfileLinkButton employeeId={employee.employeeNumber} />
                             </div>
                         </div>
                     </CardContent>
@@ -144,6 +164,12 @@ export default async function EmployeeProfilePage({ params }: { params: Promise<
                         <div className="space-y-1">
                             <p className="text-sm text-muted-foreground">Overdue Assignments</p>
                             <p className="text-2xl font-semibold text-destructive">{overdueAssignments.length}</p>
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">Expiring Skills</p>
+                            <p className={`text-2xl font-semibold ${expiringSoonCount > 0 ? 'text-amber-600' : ''}`}>
+                                {expiringSoonCount}
+                            </p>
                         </div>
                     </CardContent>
                 </Card>
@@ -180,7 +206,7 @@ export default async function EmployeeProfilePage({ params }: { params: Promise<
             <Card>
                 <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <CardTitle>Training Assignments</CardTitle>
-                    <AssignTrainingDialog employeeId={employee.id} skills={skills} />
+                    <AssignTrainingDialog employeeId={employee.employeeNumber} skills={skills} />
                 </CardHeader>
                 <CardContent>
                     {assignments.length === 0 ? (
@@ -201,7 +227,7 @@ export default async function EmployeeProfilePage({ params }: { params: Promise<
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {assignments.map((assignment: any) => {
+                                {assignments.map((assignment) => {
                                     const status = getAssignmentStatus(assignment);
                                     return (
                                         <TableRow key={assignment.id}>
@@ -286,12 +312,12 @@ export default async function EmployeeProfilePage({ params }: { params: Promise<
                         <CardTitle>Notes & Coaching Log</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <AddEmployeeNoteForm employeeId={employee.id} />
+                        <AddEmployeeNoteForm employeeId={employee.employeeNumber} />
                         <div className="space-y-4">
                             {notes.length === 0 ? (
                                 <p className="text-sm text-muted-foreground">No notes yet.</p>
                             ) : (
-                                notes.map((note: any) => (
+                                notes.map((note) => (
                                     <div key={note.id} className="rounded-md border p-3">
                                         <div className="flex items-center justify-between text-sm text-muted-foreground">
                                             <span>{note.author?.username || 'System'}</span>
@@ -308,6 +334,58 @@ export default async function EmployeeProfilePage({ params }: { params: Promise<
 
             <Card>
                 <CardHeader>
+                    <CardTitle>Recertification Status</CardTitle>
+                    <CardDescription>Tracks skills that require renewal based on validity rules.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {actionableRecerts.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                            All skills are current. Recertification reminders will appear here when a skill is due.
+                        </p>
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Skill</TableHead>
+                                    <TableHead>Expires</TableHead>
+                                    <TableHead>Status</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {actionableRecerts.map((item) => (
+                                    <TableRow key={item.trainingId}>
+                                        <TableCell>
+                                            <div className="font-medium">{item.skill.code}</div>
+                                            <div className="text-sm text-muted-foreground">{item.skill.name}</div>
+                                        </TableCell>
+                                        <TableCell>{item.expirationDate.toLocaleDateString()}</TableCell>
+                                        <TableCell>
+                                            <Badge
+                                                variant={
+                                                    item.status === 'OVERDUE'
+                                                        ? 'destructive'
+                                                        : item.status === 'DUE_SOON'
+                                                            ? 'secondary'
+                                                            : 'outline'
+                                                }
+                                            >
+                                                {item.status === 'OVERDUE'
+                                                    ? 'Overdue'
+                                                    : item.status === 'DUE_SOON'
+                                                        ? 'Due Soon'
+                                                        : 'Current'}
+                                            </Badge>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    )}
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
                     <CardTitle>Training Records</CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -316,6 +394,7 @@ export default async function EmployeeProfilePage({ params }: { params: Promise<
                             <TableRow>
                                 <TableHead>Skill Code</TableHead>
                                 <TableHead>Skill Name</TableHead>
+                                <TableHead>Revision</TableHead>
                                 <TableHead>Level</TableHead>
                                 <TableHead>Notes</TableHead>
                                 <TableHead>Evidence</TableHead>
@@ -331,13 +410,23 @@ export default async function EmployeeProfilePage({ params }: { params: Promise<
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                employee.trainings.map((record) => (
-                                    <TableRow key={record.id}>
-                                        <TableCell>{record.skill.code}</TableCell>
-                                        <TableCell>
-                                            {record.skill.documentUrl ? (
-                                                <a
-                                                    href={record.skill.documentUrl}
+                                employee.trainings.map((record) => {
+                                    const revisionNumber =
+                                        record.skillRevision?.revisionNumber ??
+                                        record.skill.currentRevisionNumber ??
+                                        1;
+                                    const revisionOutdated =
+                                        record.skillRevision?.revisionNumber &&
+                                        record.skill.currentRevisionNumber &&
+                                        record.skillRevision.revisionNumber !== record.skill.currentRevisionNumber;
+
+                                    return (
+                                        <TableRow key={record.id}>
+                                            <TableCell>{record.skill.code}</TableCell>
+                                            <TableCell>
+                                                {record.skill.documentUrl ? (
+                                                    <a
+                                                        href={record.skill.documentUrl}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="text-blue-600 hover:underline"
@@ -346,13 +435,18 @@ export default async function EmployeeProfilePage({ params }: { params: Promise<
                                                 </a>
                                             ) : (
                                                 record.skill.name
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">
-                                                {record.level}
-                                            </span>
-                                        </TableCell>
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                <Badge variant={revisionOutdated ? 'destructive' : 'secondary'}>
+                                    Rev {revisionNumber}
+                                </Badge>
+                            </TableCell>
+                                            <TableCell>
+                                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">
+                                                    {record.level}
+                                                </span>
+                                            </TableCell>
                                         <TableCell className="max-w-xs text-sm text-muted-foreground">
                                             {record.validatorNotes ? (
                                                 record.validatorNotes
@@ -376,8 +470,9 @@ export default async function EmployeeProfilePage({ params }: { params: Promise<
                                         </TableCell>
                                         <TableCell>{record.dateValidated.toLocaleDateString()}</TableCell>
                                         <TableCell>{record.validator.username}</TableCell>
-                                    </TableRow>
-                                ))
+                                        </TableRow>
+                                    );
+                                })
                             )}
                         </TableBody>
                     </Table>

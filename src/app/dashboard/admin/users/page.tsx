@@ -45,11 +45,20 @@ export default async function UsersPage() {
                                     <TableRow key={user.id}>
                                         <TableCell className="font-medium">{user.username}</TableCell>
                                         <TableCell>
-                                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
-                                            ${user.role === 'ADMIN' ? 'bg-purple-100 text-purple-800' : ''}
-                                            ${user.role === 'TRAINER' ? 'bg-blue-100 text-blue-800' : ''}
-                                            ${user.role === 'VIEWER' ? 'bg-gray-100 text-gray-800' : ''}
-                                        `}>
+                                            <span
+                                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
+                                            ${
+                                                user.role === 'ADMIN'
+                                                    ? 'bg-purple-100 text-purple-800'
+                                                    : user.role === 'TRAINER'
+                                                        ? 'bg-blue-100 text-blue-800'
+                                                        : user.role === 'HR'
+                                                            ? 'bg-emerald-100 text-emerald-800'
+                                                            : user.role === 'DCC'
+                                                                ? 'bg-amber-100 text-amber-800'
+                                                                : 'bg-gray-100 text-gray-800'
+                                            }`}
+                                            >
                                                 {user.role}
                                             </span>
                                         </TableCell>

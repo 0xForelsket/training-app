@@ -1,38 +1,45 @@
 'use client';
 
-import { createSkill } from '@/app/lib/actions';
-import { Button } from '@/components/ui/button';
+import { useActionState } from 'react';
+import { createSkillRevision } from '@/app/lib/actions';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea'; // Need to add textarea component or use Input
-import Link from 'next/link';
-import { useActionState } from 'react';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 
-export default function CreateSkillForm() {
+type SkillRevisionFormProps = {
+    skill: {
+        code: string;
+        name: string;
+        project?: string | null;
+        description?: string | null;
+        validityMonths?: number | null;
+        recertReminderDays?: number | null;
+    };
+};
+
+export function SkillRevisionForm({ skill }: SkillRevisionFormProps) {
     const initialState = { message: null, errors: {} };
     // @ts-expect-error Server action typing
-    const [state, dispatch] = useActionState(createSkill, initialState);
+    const [state, dispatch] = useActionState(createSkillRevision, initialState);
 
     return (
-        <form action={dispatch} className="space-y-4">
-            <div className="space-y-2">
-                <Label htmlFor="code">Code</Label>
-                <Input id="code" name="code" placeholder="WI-001" required />
-            </div>
+        <form action={dispatch} className="space-y-4" encType="multipart/form-data">
+            <input type="hidden" name="skillId" value={skill.code} />
 
             <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input id="name" name="name" placeholder="Assembly Process A" required />
+                <Label htmlFor="name">Skill Name</Label>
+                <Input id="name" name="name" defaultValue={skill.name} required />
             </div>
 
             <div className="space-y-2">
                 <Label htmlFor="project">Project</Label>
-                <Input id="project" name="project" placeholder="e.g., Launch Prep" />
+                <Input id="project" name="project" defaultValue={skill.project || ''} />
             </div>
 
             <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
-                <Textarea id="description" name="description" placeholder="Enter skill description" />
+                <Textarea id="description" name="description" defaultValue={skill.description || ''} />
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -43,7 +50,7 @@ export default function CreateSkillForm() {
                         name="validityMonths"
                         type="number"
                         min={1}
-                        placeholder="e.g., 12"
+                        defaultValue={skill.validityMonths ?? ''}
                     />
                 </div>
                 <div className="space-y-2">
@@ -53,7 +60,7 @@ export default function CreateSkillForm() {
                         name="recertReminderDays"
                         type="number"
                         min={1}
-                        placeholder="e.g., 30"
+                        defaultValue={skill.recertReminderDays ?? ''}
                     />
                 </div>
             </div>
@@ -61,16 +68,12 @@ export default function CreateSkillForm() {
             <div className="space-y-2">
                 <Label htmlFor="document">SOP Document (PDF)</Label>
                 <Input id="document" name="document" type="file" accept=".pdf" />
-                {state.errors?.document && (
-                    <p className="text-sm text-red-500">{state.errors.document}</p>
-                )}
             </div>
 
-            <div className="flex justify-end gap-4">
-                <Link href="/dashboard/skills">
-                    <Button variant="outline">Cancel</Button>
-                </Link>
-                <Button type="submit">Save Skill</Button>
+            {state?.message && <p className="text-sm text-muted-foreground">{state.message}</p>}
+
+            <div className="flex justify-end">
+                <Button type="submit">Publish Revision</Button>
             </div>
         </form>
     );

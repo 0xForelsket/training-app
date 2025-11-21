@@ -22,11 +22,18 @@ export async function authenticate(
     }
 }
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { logAction } from './logger';
+
+type AllowedRole = 'ADMIN' | 'TRAINER' | 'HR' | 'DCC';
+
+function hasAllowedRole(session: Awaited<ReturnType<typeof auth>> | null, roles: AllowedRole[]) {
+    if (!session || !session.user?.role) return false;
+    return roles.includes(session.user.role as AllowedRole);
+}
 
 const CreateEmployeeSchema = z.object({
     name: z.string().min(1, 'Name is required'),
@@ -58,7 +65,12 @@ const CreateEmployeeNoteSchema = z.object({
         .max(1000, 'Note is too long'),
 });
 
-export async function createEmployee(prevState: any, formData: FormData) {
+export async function createEmployee(_prevState: unknown, formData: FormData) {
+    const session = await auth();
+    if (!hasAllowedRole(session, ['ADMIN', 'HR'])) {
+        return { message: 'Unauthorized. Only HR or Admins can create employees.' };
+    }
+
     const validatedFields = CreateEmployeeSchema.safeParse({
         name: formData.get('name'),
         employeeNumber: formData.get('employeeNumber'),
@@ -104,17 +116,20 @@ export async function createEmployee(prevState: any, formData: FormData) {
                 photoUrl,
             },
         });
-        await logAction('CREATE_EMPLOYEE', 'Employee', newEmployee.id, `Created employee ${newEmployee.name} (${newEmployee.employeeNumber})`);
+        await logAction('CREATE_EMPLOYEE', 'Employee', newEmployee.employeeNumber, `Created employee ${newEmployee.name} (${newEmployee.employeeNumber})`);
         revalidatePath('/dashboard/employees');
+        revalidateTag('employees');
+        revalidateTag('dashboard-stats');
         return { message: 'Created Employee Successfully.' };
     } catch (error) {
+        console.error('Error creating employee:', error);
         return {
             message: 'Database Error: Failed to Create Employee.',
         };
     }
 }
 
-export async function updateEmployeeProfile(prevState: any, formData: FormData) {
+export async function updateEmployeeProfile(_prevState: unknown, formData: FormData) {
     const session = await auth();
     if (!session || session.user.role !== 'ADMIN') {
         return { message: 'Unauthorized. Only Admins can update employee profiles.' };
@@ -140,7 +155,7 @@ export async function updateEmployeeProfile(prevState: any, formData: FormData) 
 
     try {
         const updatedEmployee = await prisma.employee.update({
-            where: { id },
+            where: { employeeNumber: id },
             data: {
                 name,
                 employeeNumber,
@@ -153,11 +168,12 @@ export async function updateEmployeeProfile(prevState: any, formData: FormData) 
         await logAction(
             'UPDATE_EMPLOYEE',
             'Employee',
-            updatedEmployee.id,
+            updatedEmployee.employeeNumber,
             `Updated employee ${updatedEmployee.name} (${updatedEmployee.employeeNumber})`,
         );
         revalidatePath(`/dashboard/employees/${id}`);
         revalidatePath('/dashboard/employees');
+        revalidateTag('employees');
         return { message: 'Employee updated successfully.' };
     } catch (error) {
         console.error('Error updating employee:', error);
@@ -167,7 +183,7 @@ export async function updateEmployeeProfile(prevState: any, formData: FormData) 
     }
 }
 
-export async function createEmployeeNote(prevState: any, formData: FormData) {
+export async function createEmployeeNote(_prevState: unknown, formData: FormData) {
     const session = await auth();
     if (!session || (session.user.role !== 'TRAINER' && session.user.role !== 'ADMIN')) {
         return { message: 'Unauthorized. Only Trainers or Admins can add notes.' };
@@ -215,16 +231,43 @@ const CreateSkillSchema = z.object({
     name: z.string().min(1, 'Name is required'),
     project: z.string().optional(),
     description: z.string().optional(),
+    validityMonths: z
+        .preprocess((value) => (value === '' || value === null ? undefined : value), z.coerce.number().int().positive())
+        .optional(),
+    recertReminderDays: z
+        .preprocess((value) => (value === '' || value === null ? undefined : value), z.coerce.number().int().positive())
+        .optional(),
     document: z.any().optional(), // We'll validate the file manually
 });
 
-export async function createSkill(prevState: any, formData: FormData) {
+const CreateSkillRevisionSchema = z.object({
+    skillId: z.string().min(1),
+    name: z.string().min(1, 'Name is required'),
+    project: z.string().optional(),
+    description: z.string().optional(),
+    validityMonths: z
+        .preprocess((value) => (value === '' || value === null ? undefined : value), z.coerce.number().int().positive())
+        .optional(),
+    recertReminderDays: z
+        .preprocess((value) => (value === '' || value === null ? undefined : value), z.coerce.number().int().positive())
+        .optional(),
+    document: z.any().optional(),
+});
+
+export async function createSkill(_prevState: unknown, formData: FormData) {
+    const session = await auth();
+    if (!hasAllowedRole(session, ['ADMIN', 'DCC'])) {
+        return { message: 'Unauthorized. Only DCC owners or Admins can create skills.' };
+    }
+
     const validatedFields = CreateSkillSchema.safeParse({
         code: formData.get('code'),
         name: formData.get('name'),
         project: formData.get('project'),
         description: formData.get('description'),
         document: formData.get('document'),
+        validityMonths: formData.get('validityMonths'),
+        recertReminderDays: formData.get('recertReminderDays'),
     });
 
     if (!validatedFields.success) {
@@ -234,7 +277,7 @@ export async function createSkill(prevState: any, formData: FormData) {
         };
     }
 
-    const { code, name, project, description, document } = validatedFields.data;
+    const { code, name, project, description, validityMonths, recertReminderDays, document } = validatedFields.data;
     let documentUrl = null;
     const trimmedProject = project?.toString().trim();
 
@@ -260,11 +303,47 @@ export async function createSkill(prevState: any, formData: FormData) {
                 name,
                 project: trimmedProject && trimmedProject.length > 0 ? trimmedProject : null,
                 description,
+                validityMonths: validityMonths ?? null,
+                recertReminderDays: recertReminderDays ?? null,
                 documentUrl,
+                revisions: {
+                    create: {
+                        revisionNumber: 1,
+                        name,
+                        description,
+                        documentUrl,
+                        validityMonths: validityMonths ?? null,
+                        recertReminderDays: recertReminderDays ?? null,
+                        createdById: session.user.id,
+                    },
+                },
+            },
+            include: {
+                revisions: {
+                    orderBy: { revisionNumber: 'desc' },
+                    take: 1,
+                },
             },
         });
-        await logAction('CREATE_SKILL', 'Skill', newSkill.id, `Created skill ${newSkill.code} - ${newSkill.name}`);
+
+        const latestRevision = newSkill.revisions[0];
+        await prisma.skill.update({
+            where: { code: newSkill.code },
+            data: {
+                currentRevisionId: latestRevision.id,
+                currentRevisionNumber: latestRevision.revisionNumber,
+            },
+        });
+        await logAction(
+            'CREATE_SKILL',
+            'Skill',
+            newSkill.code,
+            `Created skill ${newSkill.code} - ${newSkill.name} (Rev ${latestRevision.revisionNumber})`,
+        );
+        revalidateTag('skills');
+        revalidateTag('dashboard-stats');
     } catch (error) {
+        console.error('Error creating skill:', error);
         return {
             message: 'Database Error: Failed to Create Skill.',
         };
@@ -272,6 +351,149 @@ export async function createSkill(prevState: any, formData: FormData) {
 
     revalidatePath('/dashboard/skills');
     redirect('/dashboard/skills');
+}
+
+export async function createSkillRevision(_prevState: unknown, formData: FormData) {
+    const session = await auth();
+    if (!hasAllowedRole(session, ['ADMIN', 'DCC'])) {
+        return { message: 'Unauthorized. Only DCC owners or Admins can create revisions.' };
+    }
+
+    const validatedFields = CreateSkillRevisionSchema.safeParse({
+        skillId: formData.get('skillId'),
+        name: formData.get('name'),
+        project: formData.get('project'),
+        description: formData.get('description'),
+        validityMonths: formData.get('validityMonths'),
+        recertReminderDays: formData.get('recertReminderDays'),
+        document: formData.get('document'),
+    });
+
+    if (!validatedFields.success) {
+        return {
+            errors: validatedFields.error.flatten().fieldErrors,
+            message: 'Missing fields. Failed to create revision.',
+        };
+    }
+
+    const { skillId, name, project, description, validityMonths, recertReminderDays, document } = validatedFields.data;
+    let documentUrl = null;
+    const trimmedProject = project?.toString().trim();
+
+    if (document && document.size > 0) {
+        const file = document as File;
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const filename = `${Date.now()}_${file.name.replace(/\s/g, '_')}`;
+        const uploadDir = path.join(process.cwd(), 'public/uploads');
+
+        try {
+            await writeFile(path.join(uploadDir, filename), buffer);
+            documentUrl = `/uploads/${filename}`;
+        } catch (error) {
+            console.error('Error saving file:', error);
+            return { message: 'Failed to save uploaded file.' };
+        }
+    }
+
+    const skill = await prisma.skill.findUnique({
+        where: { code: skillId },
+        include: {
+            revisions: {
+                orderBy: { revisionNumber: 'desc' },
+                take: 1,
+            },
+        },
+    });
+
+    if (!skill) {
+        return { message: 'Skill not found.' };
+    }
+
+    const nextRevisionNumber = (skill.currentRevisionNumber ?? skill.revisions[0]?.revisionNumber ?? 0) + 1;
+    const revisionDocumentUrl = documentUrl ?? skill.documentUrl;
+
+    const revision = await prisma.skillRevision.create({
+        data: {
+            skillId,
+            revisionNumber: nextRevisionNumber,
+            name,
+            description,
+            documentUrl: revisionDocumentUrl,
+            validityMonths: validityMonths ?? null,
+            recertReminderDays: recertReminderDays ?? null,
+            createdById: session.user.id,
+        },
+    });
+
+    await prisma.skill.update({
+        where: { code: skillId },
+        data: {
+            name,
+            project: trimmedProject && trimmedProject.length > 0 ? trimmedProject : null,
+            description,
+            validityMonths: validityMonths ?? null,
+            recertReminderDays: recertReminderDays ?? null,
+            documentUrl: revisionDocumentUrl,
+            currentRevisionId: revision.id,
+            currentRevisionNumber: nextRevisionNumber,
+        },
+    });
+
+    const existingTrainings = await prisma.trainingRecord.findMany({
+        where: { skillId },
+        select: { employeeId: true },
+    });
+
+    const reminderWindow = recertReminderDays ?? 30;
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + reminderWindow);
+
+    await Promise.all(
+        existingTrainings.map(async (record) => {
+            const existingAssignment = await prisma.trainingAssignment.findFirst({
+                where: { employeeId: record.employeeId, skillId },
+            });
+
+            if (existingAssignment) {
+                await prisma.trainingAssignment.update({
+                    where: { id: existingAssignment.id },
+                    data: {
+                        status: 'PENDING',
+                        dueDate,
+                        notes: `Revision ${nextRevisionNumber} requires retraining`,
+                        assignedById: session.user.id,
+                    },
+                });
+            } else {
+                await prisma.trainingAssignment.create({
+                    data: {
+                        employeeId: record.employeeId,
+                        skillId,
+                        targetLevel: 3,
+                        dueDate,
+                        status: 'PENDING',
+                        notes: `Revision ${nextRevisionNumber} requires retraining`,
+                        assignedById: session.user.id,
+                    },
+                });
+            }
+        }),
+    );
+
+    await logAction(
+        'CREATE_SKILL_REVISION',
+        'SkillRevision',
+        revision.id,
+        `Created revision ${nextRevisionNumber} for skill ${skill.code}`,
+    );
+
+    revalidatePath('/dashboard/admin/skills');
+    revalidatePath('/dashboard/skills');
+    revalidatePath('/dashboard/matrix');
+    revalidatePath('/dashboard/employees');
+    revalidateTag('skills');
+
+    return { message: 'Revision created successfully.' };
 }
 
 const CreateTrainingAssignmentSchema = z.object({
@@ -287,7 +509,7 @@ const CreateTrainingAssignmentSchema = z.object({
         .transform((value) => (value && value.trim().length > 0 ? value.trim() : null)),
 });
 
-export async function createTrainingAssignment(prevState: any, formData: FormData) {
+export async function createTrainingAssignment(_prevState: unknown, formData: FormData) {
     const session = await auth();
     if (!session || (session.user.role !== 'TRAINER' && session.user.role !== 'ADMIN')) {
         return { message: 'Unauthorized. Only Trainers or Admins can assign training.' };
@@ -351,7 +573,7 @@ const ValidateTrainingSchema = z.object({
         .transform((value) => (value && value.trim().length > 0 ? value.trim() : null)),
 });
 
-export async function validateTraining(prevState: any, formData: FormData) {
+export async function validateTraining(_prevState: unknown, formData: FormData) {
     const session = await auth();
     if (!session || session.user.role !== 'TRAINER') {
         return { message: 'Unauthorized. Only Trainers can validate training.' };
@@ -395,11 +617,11 @@ export async function validateTraining(prevState: any, formData: FormData) {
     try {
         const [skillDetails, employeeDetails] = await Promise.all([
             prisma.skill.findUnique({
-                where: { id: skillId },
-                select: { code: true, name: true },
+                where: { code: skillId },
+                select: { code: true, name: true, currentRevisionId: true, currentRevisionNumber: true },
             }),
             prisma.employee.findUnique({
-                where: { id: employeeId },
+                where: { employeeNumber: employeeId },
                 select: { employeeNumber: true, name: true },
             }),
         ]);
@@ -408,6 +630,7 @@ export async function validateTraining(prevState: any, formData: FormData) {
         const employeeLabel = employeeDetails
             ? `${employeeDetails.employeeNumber} - ${employeeDetails.name}`
             : employeeId;
+        const skillRevisionId = skillDetails?.currentRevisionId ?? null;
 
         const existingRecord = await prisma.trainingRecord.findUnique({
             where: {
@@ -426,6 +649,7 @@ export async function validateTraining(prevState: any, formData: FormData) {
                     validatorId: session.user.id,
                     dateValidated: new Date(),
                     validatorNotes,
+                    skillRevisionId,
                     ...(evidenceUrl ? { evidenceUrl } : {}),
                 },
             });
@@ -443,6 +667,7 @@ export async function validateTraining(prevState: any, formData: FormData) {
                     validatorId: session.user.id,
                     level,
                     validatorNotes,
+                    skillRevisionId,
                     evidenceUrl,
                 },
             });
@@ -456,8 +681,10 @@ export async function validateTraining(prevState: any, formData: FormData) {
 
         revalidatePath(`/dashboard/employees/${employeeId}`);
         revalidatePath('/dashboard/matrix');
+        revalidateTag('dashboard-stats');
         return { message: 'Training saved successfully.' };
     } catch (error) {
+        console.error('Error validating training:', error);
         return {
             message: 'Database Error: Failed to Validate Training.',
         };
@@ -467,12 +694,12 @@ export async function validateTraining(prevState: any, formData: FormData) {
 const CreateUserSchema = z.object({
     username: z.string().min(3, 'Username must be at least 3 characters'),
     password: z.string().min(6, 'Password must be at least 6 characters'),
-    role: z.enum(['TRAINER', 'ADMIN', 'VIEWER']),
+    role: z.enum(['TRAINER', 'ADMIN', 'VIEWER', 'HR', 'DCC']),
 });
 
 import bcrypt from 'bcryptjs';
 
-export async function createUser(prevState: any, formData: FormData) {
+export async function createUser(_prevState: unknown, formData: FormData) {
     const session = await auth();
     if (!session || session.user.role !== 'ADMIN') {
         return { message: 'Unauthorized. Only Admins can create users.' };
@@ -506,6 +733,7 @@ export async function createUser(prevState: any, formData: FormData) {
         revalidatePath('/dashboard/admin/users');
         return { message: 'User created successfully.' };
     } catch (error) {
+        console.error('Error creating user:', error);
         return {
             message: 'Database Error: Failed to Create User. Username might already exist.',
         };
@@ -514,18 +742,21 @@ export async function createUser(prevState: any, formData: FormData) {
 
 export async function deleteSkill(id: string) {
     const session = await auth();
-    if (!session || session.user.role !== 'ADMIN') {
-        return { message: 'Unauthorized. Only Admins can delete skills.' };
+    if (!hasAllowedRole(session, ['ADMIN', 'DCC'])) {
+        return { message: 'Unauthorized. Only DCC owners or Admins can delete skills.' };
     }
 
     try {
         await prisma.skill.delete({
-            where: { id },
+            where: { code: id },
         });
         await logAction('DELETE_SKILL', 'Skill', id, 'Deleted skill');
         revalidatePath('/dashboard/admin/skills');
         revalidatePath('/dashboard/skills');
+        revalidateTag('skills');
+        revalidateTag('dashboard-stats');
     } catch (error) {
+        console.error('Error deleting skill:', error);
         return {
             message: 'Database Error: Failed to Delete Skill. It might be in use.',
         };
@@ -545,9 +776,9 @@ function resolveUploadStatus(successCount: number, failureCount: number) {
     return 'PARTIAL';
 }
 
-export async function bulkCreateEmployees(employees: any[]) {
+export async function bulkCreateEmployees(employees: Record<string, unknown>[]) {
     const session = await auth();
-    if (!session || session.user.role !== 'ADMIN') {
+    if (!hasAllowedRole(session, ['ADMIN', 'HR'])) {
         return { message: 'Unauthorized.' };
     }
 
@@ -581,12 +812,12 @@ export async function bulkCreateEmployees(employees: any[]) {
                 status: 'success',
                 message: 'Created employee',
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             results.push({
                 index: index + 1,
                 identifier,
                 status: 'failed',
-                message: error?.message || 'Failed to create employee',
+                message: error instanceof Error ? error.message : 'Failed to create employee',
             });
         }
     }
@@ -614,12 +845,14 @@ export async function bulkCreateEmployees(employees: any[]) {
         `Bulk uploaded ${successCount} employees with ${failureCount} failures`,
     );
     revalidatePath('/dashboard/employees');
+    revalidateTag('employees');
+    revalidateTag('dashboard-stats');
     return { totalRows, successCount, failureCount, rows: results };
 }
 
-export async function bulkCreateSkills(skills: any[]) {
+export async function bulkCreateSkills(skills: Record<string, unknown>[]) {
     const session = await auth();
-    if (!session || session.user.role !== 'ADMIN') {
+    if (!hasAllowedRole(session, ['ADMIN', 'DCC'])) {
         return { message: 'Unauthorized.' };
     }
 
@@ -634,13 +867,54 @@ export async function bulkCreateSkills(skills: any[]) {
             }
 
             const trimmedProject = typeof skill.project === 'string' ? skill.project.trim() : '';
+            const validityMonths = skill.validityMonths
+                ? Number(skill.validityMonths)
+                : undefined;
+            const recertReminderDays = skill.recertReminderDays
+                ? Number(skill.recertReminderDays)
+                : undefined;
 
-            await prisma.skill.create({
+            if (validityMonths !== undefined && (!Number.isFinite(validityMonths) || validityMonths <= 0)) {
+                throw new Error('validityMonths must be a positive number.');
+            }
+
+            if (recertReminderDays !== undefined && (!Number.isFinite(recertReminderDays) || recertReminderDays <= 0)) {
+                throw new Error('recertReminderDays must be a positive number.');
+            }
+
+            const createdSkill = await prisma.skill.create({
                 data: {
                     code: skill.code,
                     name: skill.name,
                     description: skill.description,
                     project: trimmedProject ? trimmedProject : null,
+                    validityMonths: validityMonths ?? null,
+                    recertReminderDays: recertReminderDays ?? null,
+                    revisions: {
+                        create: {
+                            revisionNumber: 1,
+                            name: skill.name,
+                            description: skill.description,
+                            documentUrl: null,
+                            validityMonths: validityMonths ?? null,
+                            recertReminderDays: recertReminderDays ?? null,
+                            createdById: session.user.id,
+                        },
+                    },
+                },
+                include: {
+                    revisions: {
+                        orderBy: { revisionNumber: 'desc' },
+                        take: 1,
+                    },
+                },
+            });
+            const latestRevision = createdSkill.revisions[0];
+            await prisma.skill.update({
+                where: { code: createdSkill.code },
+                data: {
+                    currentRevisionId: latestRevision.id,
+                    currentRevisionNumber: latestRevision.revisionNumber,
                 },
             });
             successCount++;
@@ -650,12 +924,12 @@ export async function bulkCreateSkills(skills: any[]) {
                 status: 'success',
                 message: 'Created skill',
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             results.push({
                 index: index + 1,
                 identifier,
                 status: 'failed',
-                message: error?.message || 'Failed to create skill',
+                message: error instanceof Error ? error.message : 'Failed to create skill',
             });
         }
     }
@@ -683,6 +957,8 @@ export async function bulkCreateSkills(skills: any[]) {
         `Bulk uploaded ${successCount} skills with ${failureCount} failures`,
     );
     revalidatePath('/dashboard/skills');
+    revalidateTag('skills');
+    revalidateTag('dashboard-stats');
     return { totalRows, successCount, failureCount, rows: results };
 }
 

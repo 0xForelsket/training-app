@@ -9,12 +9,12 @@ Track ongoing initiatives using the checklist below. Checked items are complete;
   - Extend `src/app/dashboard/employees/[id]/page.tsx` with an “Assignments” section showing status chips (Pending, In Progress, Overdue) plus quick actions to remind trainers.  
   - Benefits: Turns the profile into a proactive planning tool and highlights gaps before audits.
 
-- [ ] **Recertification & Expiry Tracking**  
+- [x] **Recertification & Expiry Tracking**  
   - Add recurrence metadata to `Skill` (e.g., validity in months, reminder lead time).  
   - Show upcoming expirations and overdue recertifications on the main dashboard and employee view, with notifier hooks for email or in-app alerts.  
   - Benefits: Ensures compliance-sensitive skills stay current without manual spreadsheets.
 
-- [ ] **Skill Matrix Analytics & Filters**  
+- [x] **Skill Matrix Analytics & Filters**  
   - Enhance `src/app/dashboard/matrix/page.tsx` with department/shift filters, minimum coverage indicators, export-to-CSV/print, and heat map styling for quick scanning.  
   - Benefits: Gives operational leaders immediate insight into staffing readiness and simplifies sharing reports.
 
@@ -29,6 +29,11 @@ Track ongoing initiatives using the checklist below. Checked items are complete;
   - Provide downloadable CSV templates, client-side schema validation, and a preview table showing parsed rows before committing.  
   - Show per-row success/failure results with actionable messages and keep an upload history log.  
   - Benefits: Reduces bad imports and gives admins confidence in large data loads.
+
+- [x] **Employee Profile Enhancements**  
+  - Add KPI chips, recent activity, notes/coaching log, and quick actions (CSV export, badge links) to `src/app/dashboard/employees/[id]/page.tsx`.  
+  - Provide edit-drawer, assignment metrics, and copy profile link to make supervisor workflows faster.  
+  - Benefits: Turns the employee detail page into a richer single-pane of glass for planning and sharing.
 
 - [ ] **Role-Based Dashboards**  
   - Customize the main dashboard so trainers, admins, and viewers see the widgets most relevant to them (e.g., trainers get “Pending validations,” admins see “Users awaiting approval”).  

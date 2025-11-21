@@ -29,6 +29,28 @@ async function main() {
     });
 
     console.log({ admin });
+
+    const hr = await prisma.user.upsert({
+        where: { username: 'hr' },
+        update: {},
+        create: {
+            username: 'hr',
+            password: hashedPassword,
+            role: 'HR',
+        },
+    });
+
+    const dcc = await prisma.user.upsert({
+        where: { username: 'dcc' },
+        update: {},
+        create: {
+            username: 'dcc',
+            password: hashedPassword,
+            role: 'DCC',
+        },
+    });
+
+    console.log({ hr, dcc });
 }
 
 main()

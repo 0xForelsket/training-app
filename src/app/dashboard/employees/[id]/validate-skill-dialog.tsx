@@ -29,15 +29,20 @@ export default function ValidateSkillDialog({
     skills,
 }: {
     employeeId: string;
-    skills: any[];
+    skills: {
+        code: string;
+        name: string;
+        currentRevisionNumber?: number | null;
+        documentUrl?: string | null;
+    }[];
 }) {
     const [open, setOpen] = useState(false);
     const [selectedSkillId, setSelectedSkillId] = useState<string>('');
     const initialState = { message: null, errors: {} };
-    // @ts-ignore
+    // @ts-expect-error Server action typing
     const [state, dispatch] = useActionState(validateTraining, initialState);
 
-    const selectedSkill = skills.find(s => s.id === selectedSkillId);
+    const selectedSkill = skills.find(s => s.code === selectedSkillId);
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -62,8 +67,8 @@ export default function ValidateSkillDialog({
                                 </SelectTrigger>
                                 <SelectContent>
                                     {skills.map((skill) => (
-                                        <SelectItem key={skill.id} value={skill.id}>
-                                            {skill.code} - {skill.name}
+                                        <SelectItem key={skill.code} value={skill.code}>
+                                            {skill.code} - {skill.name} (Rev {skill.currentRevisionNumber || 1})
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -114,6 +119,9 @@ export default function ValidateSkillDialog({
                             </p>
                         </div>
                     </div>
+                    {state?.message && (
+                        <p className="text-sm text-muted-foreground mt-2">{state.message}</p>
+                    )}
                     <DialogFooter>
                         <Button type="submit">Validate</Button>
                     </DialogFooter>

@@ -1,12 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export default function SkillsLoading() {
+export default function EmployeesLoading() {
     return (
         <div className="p-8 space-y-4">
-            <div className="flex justify-between items-center">
-                <Skeleton className="h-7 w-56" />
-                <Skeleton className="h-10 w-24 rounded-full" />
+            <div className="flex items-center justify-between">
+                <Skeleton className="h-7 w-32" />
+                <Skeleton className="h-10 w-28 rounded-full" />
             </div>
 
             <Card>
@@ -18,7 +18,7 @@ export default function SkillsLoading() {
                                 <Skeleton className="h-10 w-48" />
                             </div>
                         ))}
-                        <Skeleton className="h-10 w-32 rounded-full" />
+                        <Skeleton className="h-10 w-28 rounded-full" />
                     </div>
                 </CardContent>
             </Card>
@@ -37,7 +37,7 @@ export default function SkillsLoading() {
                             <Skeleton className="h-4 w-full" />
                             <Skeleton className="h-4 w-full" />
                             <Skeleton className="h-4 w-full" />
-                            <Skeleton className="h-8 w-14 rounded-full" />
+                            <Skeleton className="h-8 w-16 rounded-full" />
                         </div>
                     ))}
                 </CardContent>

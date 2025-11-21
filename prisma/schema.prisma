@@ -33,11 +33,11 @@ model User {
   trainingAssignments TrainingAssignment[]
   uploadLogs UploadLog[]
   employeeNotes EmployeeNote[]
+  skillRevisions SkillRevision[]
 }
 
 model Employee {
-  id            String           @id @default(cuid())
-  employeeNumber String           @unique
+  employeeNumber String           @id
   name          String
   department    String? // e.g., "Assembly", "Logistics"
   shift         Shift            @default(DAY)
@@ -51,22 +51,27 @@ model Employee {
 }
 
 model Skill {
-  id          String           @id @default(cuid())
-  code        String           @unique
+  code        String           @id
   name        String
   project     String?
   description String?
   documentUrl String?
+  validityMonths Int?
+  recertReminderDays Int?
+  currentRevisionId String? @unique
+  currentRevisionNumber Int     @default(1)
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
   trainings   TrainingRecord[]
   assignments TrainingAssignment[]
+  revisions   SkillRevision[]
+  currentRevision SkillRevision? @relation("CurrentSkillRevision", fields: [currentRevisionId], references: [id])
 }
 
 model TrainingAssignment {
   id               String            @id @default(cuid())
-  employeeId       String
-  skillId          String
+  employeeId   String
+  skillId        String
   assignedById     String?
   targetLevel      Int
   dueDate          DateTime
@@ -76,8 +81,8 @@ model TrainingAssignment {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
-  employee         Employee          @relation(fields: [employeeId], references: [id])
-  skill            Skill             @relation(fields: [skillId], references: [id])
+  employee         Employee          @relation(fields: [employeeId], references: [employeeNumber])
+  skill            Skill             @relation(fields: [skillId], references: [code])
   assignedBy       User?             @relation(fields: [assignedById], references: [id])
 
   @@index([employeeId])
@@ -88,17 +93,40 @@ model TrainingRecord {
   id            String   @id @default(cuid())
   employeeId    String
   skillId       String
+  skillRevisionId String?
   validatorId   String // User ID of the trainer
   level         Int      @default(1) // 1-4 TPS Scale
   dateValidated DateTime @default(now())
   validatorNotes String?
   evidenceUrl    String?
   
-  employee      Employee @relation(fields: [employeeId], references: [id])
-  skill         Skill    @relation(fields: [skillId], references: [id])
+  employee      Employee @relation(fields: [employeeId], references: [employeeNumber])
+  skill         Skill    @relation(fields: [skillId], references: [code])
+  skillRevision SkillRevision? @relation(fields: [skillRevisionId], references: [id])
   validator     User     @relation(fields: [validatorId], references: [id])
   
   @@unique([employeeId, skillId])
+}
+
+model SkillRevision {
+  id                 String   @id @default(cuid())
+  skillId            String
+  revisionNumber     Int
+  name               String
+  description        String?
+  documentUrl        String?
+  validityMonths     Int?
+  recertReminderDays Int?
+  effectiveDate      DateTime @default(now())
+  createdAt          DateTime @default(now())
+  createdById        String?
+
+  skill              Skill    @relation(fields: [skillId], references: [code])
+  currentFor         Skill?   @relation("CurrentSkillRevision")
+  createdBy          User?    @relation(fields: [createdById], references: [id])
+  trainings          TrainingRecord[]
+
+  @@unique([skillId, revisionNumber])
 }
 
 model AuditLog {
@@ -135,7 +163,7 @@ model EmployeeNote {
   content    String
   createdAt  DateTime @default(now())
 
-  employee   Employee @relation(fields: [employeeId], references: [id])
+  employee   Employee @relation(fields: [employeeId], references: [employeeNumber])
   author     User?    @relation(fields: [authorId], references: [id])
 
   @@index([employeeId])

@@ -24,7 +24,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 
 type SkillOption = {
-    id: string;
     code: string;
     name: string;
 };
@@ -38,7 +37,7 @@ export default function AssignTrainingDialog({
 }) {
     const [open, setOpen] = useState(false);
     const initialState = { message: null, errors: {} };
-    // @ts-ignore
+    // @ts-expect-error Server action typing
     const [state, dispatch] = useActionState(createTrainingAssignment, initialState);
 
     return (
@@ -62,7 +61,7 @@ export default function AssignTrainingDialog({
                             </SelectTrigger>
                             <SelectContent>
                                 {skills.map((skill) => (
-                                    <SelectItem key={skill.id} value={skill.id}>
+                                    <SelectItem key={skill.code} value={skill.code}>
                                         {skill.code} — {skill.name}
                                     </SelectItem>
                                 ))}

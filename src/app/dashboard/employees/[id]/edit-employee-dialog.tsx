@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useState } from 'react';
+import { startTransition, useActionState, useEffect, useState } from 'react';
 import { updateEmployeeProfile } from '@/app/lib/actions';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,7 +17,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type EmployeeProfile = {
-    id: string;
     name: string;
     employeeNumber: string;
     department?: string | null;
@@ -28,14 +27,14 @@ type EmployeeProfile = {
 export function EditEmployeeDialog({ employee }: { employee: EmployeeProfile }) {
     const [open, setOpen] = useState(false);
     const initialState = { message: null, errors: {} };
-    // @ts-ignore
+    // @ts-expect-error Server action typing
     const [state, dispatch] = useActionState(updateEmployeeProfile, initialState);
 
     useEffect(() => {
         if (state?.message === 'Employee updated successfully.') {
-            setOpen(false);
+            startTransition(() => setOpen(false));
         }
-    }, [state]);
+    }, [state?.message]);
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -48,7 +47,7 @@ export function EditEmployeeDialog({ employee }: { employee: EmployeeProfile }) 
                     <DialogDescription>Update profile details and shift assignment.</DialogDescription>
                 </DialogHeader>
                 <form action={dispatch} className="space-y-4">
-                    <input type="hidden" name="id" value={employee.id} />
+                    <input type="hidden" name="id" value={employee.employeeNumber} />
                     <div className="space-y-2">
                         <Label htmlFor="name">Full Name</Label>
                         <Input id="name" name="name" defaultValue={employee.name} required />

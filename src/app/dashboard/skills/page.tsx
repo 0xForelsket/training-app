@@ -1,5 +1,4 @@
 import { getSkillProjects, getSkills } from '@/app/lib/data';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -36,6 +35,39 @@ export default async function SkillsPage({
     ]);
     const hasActiveFilters =
         query.length > 0 || currentProject !== 'all' || currentShift !== 'all';
+
+    const renderShiftPill = (shift?: string) => {
+        const isNight = shift === 'NIGHT';
+        const label = isNight ? 'Night' : 'Day';
+        const base =
+            'rounded-full border px-2 py-[2px] text-[10px] font-semibold tracking-[0.08em] uppercase';
+        return (
+            <span
+                className={`${base} ${
+                    isNight
+                        ? 'border-[#cfe0f5] bg-[#e9f1fb] text-[#1b4a80]'
+                        : 'border-[#d0e6d5] bg-[#eaf4eb] text-[#52742a]'
+                }`}
+            >
+                {label}
+            </span>
+        );
+    };
+
+    const renderEmployee = (name?: string, shift?: string) => {
+        const initial = name?.trim()?.charAt(0)?.toUpperCase() || '?';
+        return (
+            <div
+                className="inline-flex flex-wrap items-center gap-2 rounded-full border border-[#d7e0ea] bg-[#eef4f9] px-3 py-1.5 text-xs font-semibold text-[#0f2a40]"
+            >
+                <span className="flex size-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
+                    {initial}
+                </span>
+                <span>{name || 'Unknown'}</span>
+                {renderShiftPill(shift)}
+            </div>
+        );
+    };
 
     return (
         <div className="p-8 space-y-4">
@@ -107,6 +139,7 @@ export default async function SkillsPage({
                             <TableRow>
                                 <TableHead>Code</TableHead>
                                 <TableHead>Name</TableHead>
+                                <TableHead>Revision</TableHead>
                                 <TableHead>Project</TableHead>
                                 <TableHead>Description</TableHead>
                                 <TableHead>Employees & Shift</TableHead>
@@ -115,29 +148,27 @@ export default async function SkillsPage({
                         <TableBody>
                             {skills.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                                    <TableCell colSpan={6} className="text-center text-muted-foreground">
                                         No skills match your filters. Try adjusting the search or clear filters.
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 skills.map((skill) => (
-                                    <TableRow key={skill.id}>
+                                    <TableRow key={skill.code}>
                                         <TableCell className="font-medium">{skill.code}</TableCell>
                                         <TableCell>{skill.name}</TableCell>
+                                        <TableCell>Rev {skill.currentRevisionNumber || 1}</TableCell>
                                         <TableCell>{skill.project || '-'}</TableCell>
                                         <TableCell>{skill.description || '-'}</TableCell>
-                                        <TableCell>
+                                        <TableCell className="align-top">
                                             {skill.trainings && skill.trainings.length > 0 ? (
-                                                <div className="flex flex-wrap gap-2">
+                                                <div className="flex flex-wrap gap-3">
                                                     {skill.trainings.map((training) => {
                                                         const employee = training.employee;
                                                         return (
-                                                            <Badge key={training.id} variant="secondary" className="gap-1">
-                                                                <span>{employee?.name || 'Unknown'}</span>
-                                                                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                                                                    {employee?.shift === 'NIGHT' ? 'Night' : 'Day'}
-                                                                </span>
-                                                            </Badge>
+                                                            <div key={training.id}>
+                                                                {renderEmployee(employee?.name, employee?.shift)}
+                                                            </div>
                                                         );
                                                     })}
                                                 </div>
