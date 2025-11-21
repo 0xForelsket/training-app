@@ -3,6 +3,12 @@ import { prisma } from '@/lib/prisma';
 
 type EmployeeShift = 'DAY' | 'NIGHT';
 
+type EmployeeFilters = {
+    query?: string;
+    department?: string;
+    shift?: EmployeeShift;
+};
+
 type SkillFilters = {
     query?: string;
     project?: string;
@@ -13,15 +19,29 @@ type SkillQueryOptions = {
     includeEmployees?: boolean;
 };
 
-export async function getEmployees(query?: string) {
+export async function getEmployees(filters?: EmployeeFilters) {
     try {
+        const where: Prisma.EmployeeWhereInput = {};
+        const searchTerm = filters?.query?.trim();
+
+        if (searchTerm && searchTerm.length > 0) {
+            where.OR = [
+                { name: { contains: searchTerm } },
+                { employeeNumber: { contains: searchTerm } },
+            ];
+        }
+
+        const departmentFilter = filters?.department?.trim();
+        if (departmentFilter) {
+            where.department = departmentFilter;
+        }
+
+        if (filters?.shift) {
+            where.shift = filters.shift;
+        }
+
         const employees = await prisma.employee.findMany({
-            where: {
-                OR: [
-                    { name: { contains: query || '' } },
-                    { employeeNumber: { contains: query || '' } },
-                ],
-            },
+            where,
             orderBy: { name: 'asc' },
         });
         return employees;
@@ -41,6 +61,21 @@ export async function getEmployeeById(id: string) {
                         skill: true,
                         validator: true,
                     },
+                    orderBy: { dateValidated: 'desc' },
+                },
+                assignments: {
+                    include: {
+                        skill: true,
+                        assignedBy: true,
+                    },
+                    orderBy: { dueDate: 'asc' },
+                },
+                notes: {
+                    include: {
+                        author: true,
+                    },
+                    orderBy: { createdAt: 'desc' },
+                    take: 10,
                 },
             },
         });
@@ -173,5 +208,39 @@ export async function getRecentAuditLogs(limit = 5) {
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch recent audit logs.');
+    }
+}
+
+export async function getUploadHistory(limit = 10) {
+    try {
+        const logs = await prisma.uploadLog.findMany({
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+            include: {
+                user: true,
+            },
+        });
+        return logs;
+    } catch (error) {
+        console.error('Database Error:', error);
+        throw new Error('Failed to fetch upload history.');
+    }
+}
+
+export async function getEmployeeDepartments() {
+    try {
+        const departments = await prisma.employee.findMany({
+            where: { department: { not: null } },
+            select: { department: true },
+            distinct: ['department'],
+        });
+
+        return departments
+            .map((entry) => entry.department)
+            .filter((dept): dept is string => !!dept && dept.trim().length > 0)
+            .sort((a, b) => a.localeCompare(b));
+    } catch (error) {
+        console.error('Database Error:', error);
+        throw new Error('Failed to fetch departments.');
     }
 }

@@ -15,6 +15,12 @@ enum Shift {
   NIGHT
 }
 
+enum AssignmentStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
 model User {
   id        String   @id @default(cuid())
   username  String   @unique
@@ -24,6 +30,9 @@ model User {
   updatedAt DateTime @updatedAt
   validatedTrainings TrainingRecord[]
   auditLogs AuditLog[]
+  trainingAssignments TrainingAssignment[]
+  uploadLogs UploadLog[]
+  employeeNotes EmployeeNote[]
 }
 
 model Employee {
@@ -37,6 +46,8 @@ model Employee {
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
   trainings     TrainingRecord[]
+  assignments   TrainingAssignment[]
+  notes         EmployeeNote[]
 }
 
 model Skill {
@@ -49,6 +60,28 @@ model Skill {
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
   trainings   TrainingRecord[]
+  assignments TrainingAssignment[]
+}
+
+model TrainingAssignment {
+  id               String            @id @default(cuid())
+  employeeId       String
+  skillId          String
+  assignedById     String?
+  targetLevel      Int
+  dueDate          DateTime
+  status           AssignmentStatus  @default(PENDING)
+  notes            String?
+  lastReminderSentAt DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  employee         Employee          @relation(fields: [employeeId], references: [id])
+  skill            Skill             @relation(fields: [skillId], references: [id])
+  assignedBy       User?             @relation(fields: [assignedById], references: [id])
+
+  @@index([employeeId])
+  @@index([skillId])
 }
 
 model TrainingRecord {
@@ -77,4 +110,34 @@ model AuditLog {
   user       User     @relation(fields: [userId], references: [id])
   details    String?  // JSON string or text description
   createdAt  DateTime @default(now())
+}
+
+model UploadLog {
+  id           String   @id @default(cuid())
+  type         String
+  status       String
+  totalRows    Int
+  successCount Int
+  failureCount Int
+  details      String?
+  createdAt    DateTime @default(now())
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id])
+
+  @@index([type])
+  @@index([createdAt])
+}
+
+model EmployeeNote {
+  id         String   @id @default(cuid())
+  employeeId String
+  authorId   String?
+  content    String
+  createdAt  DateTime @default(now())
+
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  author     User?    @relation(fields: [authorId], references: [id])
+
+  @@index([employeeId])
+  @@index([createdAt])
 }
