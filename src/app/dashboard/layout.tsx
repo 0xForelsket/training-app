@@ -32,6 +32,11 @@ export default async function DashboardLayout({
                         <Link href="/dashboard/matrix" className="transition-colors hover:text-[#002540]">
                             Matrix
                         </Link>
+                        {session?.user?.role === 'TRAINER' && (
+                            <Link href="/dashboard/validate-mobile" className="transition-colors hover:text-[#002540]">
+                                Validate (Mobile)
+                            </Link>
+                        )}
                         {session?.user?.role === 'ADMIN' && (
                             <Link href="/dashboard/admin" className="transition-colors hover:text-[#002540]">
                                 Admin
